@@ -17,6 +17,18 @@ if 'last_update' not in st.session_state:
 if 'fund_code' not in st.session_state:
     st.session_state.fund_code = ""
 
+# Load fund list (cached) - defined at module level for proper caching
+@st.cache_data(ttl=86400)  # Cache for 24 hours
+def load_fund_list():
+    try:
+        client = TushareClient()
+        df, error = client.get_all_funds()
+        if error:
+            return None, error
+        return df, None
+    except Exception as e:
+        return None, str(e)
+
 # Sidebar with refresh controls
 with st.sidebar:
     st.title("⚙️ 设置")
@@ -24,28 +36,21 @@ with st.sidebar:
     # Fund list search section
     st.subheader("📋 基金列表")
 
-    # Load fund list (cached)
-    @st.cache_data(ttl=86400)  # Cache for 24 hours
-    def load_fund_list():
-        try:
-            client = TushareClient()
-            df, error = client.get_all_funds()
-            if error:
-                return None, error
-            return df, None
-        except Exception as e:
-            return None, str(e)
-
     fund_list_df, fund_list_error = load_fund_list()
 
     if fund_list_error:
         st.error(f"加载基金列表失败: {fund_list_error}")
-    elif fund_list_df is not None:
-        # Search box
+    elif fund_list_df is None:
+        st.warning("基金列表数据为空")
+    elif fund_list_df.empty:
+        st.warning("未找到基金数据")
+    else:
+        # Search box with key to preserve state
         search_term = st.text_input(
             "搜索基金",
             placeholder="输入基金代码或名称",
-            help="支持模糊搜索基金代码或名称"
+            help="支持模糊搜索基金代码或名称",
+            key="fund_search"
         )
 
         # Filter funds based on search term
