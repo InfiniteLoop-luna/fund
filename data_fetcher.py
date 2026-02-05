@@ -179,11 +179,31 @@ class RealtimeQuoteClient:
             df = df.sort_values('trade_date', ascending=False).drop_duplicates(subset=['ts_code'], keep='first')
             quotes = {}
             for _, row in df.iterrows():
+                # Validate and convert close price
+                close_value = row['close']
+                if pd.isna(close_value):
+                    continue  # Skip quotes with null close price
+
+                try:
+                    current_price = float(close_value)
+                except (ValueError, TypeError):
+                    continue  # Skip quotes with invalid close price format
+
+                # Validate and convert pct_chg
+                pct_chg_value = row['pct_chg']
+                if pd.isna(pct_chg_value):
+                    continue  # Skip quotes with null pct_chg
+
+                try:
+                    change_pct = float(pct_chg_value)
+                except (ValueError, TypeError):
+                    continue  # Skip quotes with invalid pct_chg format
+
                 stock_code = row['ts_code'].split('.')[0]
                 quotes[stock_code] = Quote(
                     stock_code=stock_code,
-                    current_price=float(row['close']),
-                    change_pct=float(row['pct_chg']),
+                    current_price=current_price,
+                    change_pct=change_pct,
                     timestamp=datetime.now()
                 )
             return quotes, None
@@ -202,16 +222,33 @@ class RealtimeQuoteClient:
             for line in response.text.strip().split('\n'):
                 if '=' not in line:
                     continue
-                code_part = line.split('=')[0].split('_')[-1]
-                data_part = line.split('"')[1]
+
+                # Add try-except around array indexing to handle malformed lines
+                try:
+                    code_part = line.split('=')[0].split('_')[-1]
+                    data_part = line.split('"')[1]
+                except IndexError:
+                    continue  # Skip malformed lines
+
                 if not data_part:
                     continue
                 fields = data_part.split(',')
                 if len(fields) < 4:
                     continue
+
+                # Validate fields exist before accessing them
+                if not code_part or len(code_part) < 3:
+                    continue
+
                 stock_code = code_part[2:]
-                current_price = float(fields[3])
-                prev_close = float(fields[2])
+
+                # Add try-except around float conversions to handle invalid data
+                try:
+                    current_price = float(fields[3])
+                    prev_close = float(fields[2])
+                except (ValueError, TypeError, IndexError):
+                    continue  # Skip lines with invalid numeric data
+
                 change_pct = ((current_price - prev_close) / prev_close) * 100 if prev_close > 0 else 0.0
                 quotes[stock_code] = Quote(
                     stock_code=stock_code,
