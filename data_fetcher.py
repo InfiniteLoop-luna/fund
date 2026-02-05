@@ -226,10 +226,29 @@ class RealtimeQuoteClient:
         try:
             sina_codes = [f"sh{code}" if code.startswith('6') else f"sz{code}" for code in stock_codes]
             url = f"http://hq.sinajs.cn/list={','.join(sina_codes)}"
-            response = requests.get(url, timeout=5)
-            response.encoding = 'gbk'
-            if response.status_code != 200:
-                return {}, f"Sina API error: HTTP {response.status_code}"
+
+            # Try with longer timeout and retry once if it fails
+            max_retries = 2
+            timeout = 15  # Increased from 5 to 15 seconds
+
+            for attempt in range(max_retries):
+                try:
+                    response = requests.get(url, timeout=timeout)
+                    response.encoding = 'gbk'
+                    if response.status_code != 200:
+                        if attempt < max_retries - 1:
+                            continue  # Retry
+                        return {}, f"Sina API error: HTTP {response.status_code}"
+                    break  # Success, exit retry loop
+                except requests.Timeout:
+                    if attempt < max_retries - 1:
+                        continue  # Retry
+                    return {}, f"Sina API timeout after {max_retries} attempts (timeout={timeout}s)"
+                except requests.RequestException as e:
+                    if attempt < max_retries - 1:
+                        continue  # Retry
+                    return {}, f"Sina API connection error: {str(e)}"
+
             quotes = {}
             for line in response.text.strip().split('\n'):
                 if '=' not in line:
