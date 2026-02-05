@@ -343,6 +343,10 @@ if st.session_state.fund_code:
     if history_error:
         st.warning(f"⚠️ {history_error}")
     elif history_df is not None and not history_df.empty:
+        # Convert date strings to datetime for proper x-axis formatting
+        import pandas as pd
+        history_df['date'] = pd.to_datetime(history_df['date'], format='%Y%m%d')
+
         # Create Plotly chart with smooth curves and transparent background
         fig = go.Figure()
 
@@ -364,7 +368,7 @@ if st.session_state.fund_code:
         # Add current estimation point if available
         if estimation:
             fig.add_trace(go.Scatter(
-                x=[datetime.now().strftime('%Y%m%d')],
+                x=[datetime.now()],
                 y=[estimation.estimated_value],
                 mode='markers',
                 name='实时估值',
@@ -384,7 +388,9 @@ if st.session_state.fund_code:
                 showgrid=True,
                 gridcolor='rgba(0,0,0,0.05)',
                 showline=True,
-                linecolor='rgba(0,0,0,0.1)'
+                linecolor='rgba(0,0,0,0.1)',
+                tickformat='%Y-%m-%d',
+                dtick=86400000 * 5  # Show tick every 5 days
             ),
             yaxis=dict(
                 title='单位净值',
