@@ -380,6 +380,18 @@ if st.session_state.fund_code:
                 hovertemplate='<b>实时估值</b>: %{y:.4f}<extra></extra>'
             ))
 
+        # Calculate y-axis range with padding to show variations more clearly
+        y_min = history_df['nav'].min()
+        y_max = history_df['nav'].max()
+
+        # Include estimation point in range calculation if available
+        if estimation:
+            y_min = min(y_min, estimation.estimated_value)
+            y_max = max(y_max, estimation.estimated_value)
+
+        y_range = y_max - y_min
+        y_padding = max(y_range * 0.1, 0.01)  # 10% padding or at least 0.01
+
         fig.update_layout(
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
@@ -397,7 +409,8 @@ if st.session_state.fund_code:
                 showgrid=True,
                 gridcolor='rgba(0,0,0,0.05)',
                 showline=True,
-                linecolor='rgba(0,0,0,0.1)'
+                linecolor='rgba(0,0,0,0.1)',
+                range=[y_min - y_padding, y_max + y_padding]  # Tight range around data
             ),
             hovermode='x unified',
             margin=dict(l=50, r=50, t=30, b=50),
