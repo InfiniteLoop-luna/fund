@@ -25,7 +25,14 @@ st.markdown("""
         background: linear-gradient(180deg, #1e3a8a 0%, #2563eb 100%);
     }
 
-    [data-testid="stSidebar"] * {
+    /* Sidebar text elements (but not buttons) */
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] .stMarkdown,
+    [data-testid="stSidebar"] .stCaption,
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3,
+    [data-testid="stSidebar"] p {
         color: white !important;
     }
 
