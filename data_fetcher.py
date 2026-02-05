@@ -233,9 +233,9 @@ class RealtimeQuoteClient:
         try:
             ts_codes = [f"{code}.SH" if code.startswith('6') else f"{code}.SZ" for code in stock_codes]
 
-            # Try real-time tick snapshot first (stk_tick)
+            # Try real-time quote API first
             try:
-                df = self.pro.stk_tick(ts_code=','.join(ts_codes))
+                df = self.pro.realtime_quote(ts_code=','.join(ts_codes))
                 if not df.empty and 'price' in df.columns and 'pct_change' in df.columns:
                     quotes = {}
                     for _, row in df.iterrows():
@@ -270,7 +270,7 @@ class RealtimeQuoteClient:
                     if quotes:
                         return quotes, None
             except Exception:
-                # If stk_tick fails, fall through to daily API
+                # If realtime_quote fails, fall through to daily API
                 pass
 
             # Fallback to daily API
