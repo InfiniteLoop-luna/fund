@@ -43,8 +43,8 @@ class TushareClient:
             if df.empty:
                 return None, f"Fund code {fund_code} not found"
 
-            # Validate required fields exist
-            required_fields = ['ts_code', 'name', 'management', 'manager', 'found_date']
+            # Validate required fields exist (manager is optional)
+            required_fields = ['ts_code', 'name', 'management', 'found_date']
             missing_fields = [field for field in required_fields if field not in df.columns]
             if missing_fields:
                 return None, f"Missing required fields in fund_basic response: {', '.join(missing_fields)}"
@@ -78,7 +78,7 @@ class TushareClient:
                 fund_code=df.iloc[0]['ts_code'],
                 fund_name=df.iloc[0]['name'],
                 management=df.iloc[0]['management'],
-                manager=df.iloc[0]['manager'] if pd.notna(df.iloc[0]['manager']) else 'N/A',
+                manager=df.iloc[0]['manager'] if 'manager' in df.columns and pd.notna(df.iloc[0]['manager']) else 'N/A',
                 found_date=df.iloc[0]['found_date'],
                 net_value=net_value,
                 net_value_date=nav_df['end_date']
