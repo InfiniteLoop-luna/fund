@@ -20,6 +20,70 @@ if 'fund_code' not in st.session_state:
 # Sidebar with refresh controls
 with st.sidebar:
     st.title("⚙️ 设置")
+
+    # Fund list search section
+    st.subheader("📋 基金列表")
+
+    # Load fund list (cached)
+    @st.cache_data(ttl=86400)  # Cache for 24 hours
+    def load_fund_list():
+        try:
+            client = TushareClient()
+            df, error = client.get_all_funds()
+            if error:
+                return None, error
+            return df, None
+        except Exception as e:
+            return None, str(e)
+
+    fund_list_df, fund_list_error = load_fund_list()
+
+    if fund_list_error:
+        st.error(f"加载基金列表失败: {fund_list_error}")
+    elif fund_list_df is not None:
+        # Search box
+        search_term = st.text_input(
+            "搜索基金",
+            placeholder="输入基金代码或名称",
+            help="支持模糊搜索基金代码或名称"
+        )
+
+        # Filter funds based on search term
+        if search_term:
+            filtered_df = fund_list_df[
+                fund_list_df['ts_code'].str.contains(search_term, case=False, na=False) |
+                fund_list_df['name'].str.contains(search_term, case=False, na=False)
+            ].head(50)  # Limit to 50 results for performance
+        else:
+            filtered_df = fund_list_df.head(50)  # Show first 50 by default
+
+        # Display fund count
+        if search_term:
+            st.caption(f"找到 {len(fund_list_df[fund_list_df['ts_code'].str.contains(search_term, case=False, na=False) | fund_list_df['name'].str.contains(search_term, case=False, na=False)])} 个基金，显示前 {len(filtered_df)} 个")
+        else:
+            st.caption(f"共 {len(fund_list_df)} 个基金，显示前 {len(filtered_df)} 个")
+
+        # Fund selection
+        if not filtered_df.empty:
+            # Create display options: "代码 - 名称"
+            fund_options = [f"{row['ts_code'].replace('.OF', '')} - {row['name']}"
+                          for _, row in filtered_df.iterrows()]
+
+            selected_fund = st.selectbox(
+                "选择基金",
+                options=[""] + fund_options,
+                format_func=lambda x: "请选择..." if x == "" else x
+            )
+
+            if selected_fund and selected_fund != "":
+                # Extract fund code from selection
+                selected_code = selected_fund.split(" - ")[0]
+                if st.button("📊 查看该基金", use_container_width=True, type="primary"):
+                    st.session_state.fund_code = selected_code
+                    CacheManager.clear_cache()
+                    st.rerun()
+
+    st.markdown("---")
     st.subheader("刷新设置")
 
     refresh_options = {

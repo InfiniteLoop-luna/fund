@@ -101,6 +101,26 @@ class TushareClient:
         except Exception as e:
             return None, f"Error fetching fund basic info: {str(e)}"
 
+    def get_all_funds(self) -> Tuple[Optional[pd.DataFrame], Optional[str]]:
+        """
+        Fetch all public mutual funds list
+
+        Returns:
+            (DataFrame with columns: ts_code, name, management, None) on success
+            (None, error_message) on failure
+        """
+        try:
+            # Fetch all open-ended funds (market='E' for public funds)
+            df = self.pro.fund_basic(market='E', status='L', fields='ts_code,name,management,fund_type')
+
+            if df.empty:
+                return None, "No funds data available"
+
+            return df, None
+
+        except Exception as e:
+            return None, f"Error fetching funds list: {str(e)}"
+
     def get_fund_portfolio(self, fund_code: str) -> Tuple[Optional[List[Holding]], Optional[str]]:
         """
         Fetch fund top 10 holdings
