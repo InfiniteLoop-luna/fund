@@ -2,8 +2,8 @@ import tushare as ts
 import streamlit as st
 import pandas as pd
 import requests
-from typing import Optional, Tuple, List
-from models import FundBasicInfo, Holding, Quote
+from typing import Optional, Tuple, List, Any
+from models import FundBasicInfo, Holding, Quote, CachedData
 from datetime import datetime
 
 
@@ -259,3 +259,33 @@ class RealtimeQuoteClient:
             return quotes, None if quotes else "No data from Sina"
         except Exception as e:
             return {}, f"Sina API error: {str(e)}"
+
+
+class CacheManager:
+    """Manages caching of fund data in session state"""
+    FUND_INFO_TTL = 300
+    QUOTES_TTL = 30
+
+    @staticmethod
+    def get_cached(key: str, ttl: int) -> Optional[CachedData]:
+        if key not in st.session_state:
+            return None
+        cached = st.session_state[key]
+        age = (datetime.now() - cached.timestamp).total_seconds()
+        if age > ttl:
+            cached.is_stale = True
+        return cached
+
+    @staticmethod
+    def set_cached(key: str, data: Any):
+        st.session_state[key] = CachedData(
+            data=data,
+            timestamp=datetime.now(),
+            is_stale=False
+        )
+
+    @staticmethod
+    def clear_cache():
+        keys_to_remove = [k for k in st.session_state.keys() if k.startswith('cache_')]
+        for key in keys_to_remove:
+            del st.session_state[key]
