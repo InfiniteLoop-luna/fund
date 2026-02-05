@@ -63,8 +63,16 @@ with st.sidebar:
         # Fund selection
         if not filtered_df.empty:
             # Create display options: "代码 - 名称"
-            fund_options = [f"{row['ts_code'].replace('.OF', '')} - {row['name']}"
-                          for _, row in filtered_df.iterrows()]
+            # Strip common suffixes for cleaner display but keep full code in data
+            fund_options = []
+            fund_code_map = {}  # Map display code to full ts_code
+            for _, row in filtered_df.iterrows():
+                ts_code = row['ts_code']
+                # Strip suffix for display
+                display_code = ts_code.replace('.OF', '').replace('.SH', '').replace('.SZ', '')
+                display_text = f"{display_code} - {row['name']}"
+                fund_options.append(display_text)
+                fund_code_map[display_text] = ts_code
 
             selected_fund = st.selectbox(
                 "选择基金",
@@ -73,8 +81,8 @@ with st.sidebar:
             )
 
             if selected_fund and selected_fund != "":
-                # Extract fund code from selection
-                selected_code = selected_fund.split(" - ")[0]
+                # Get the full ts_code from the map
+                selected_code = fund_code_map[selected_fund]
                 if st.button("📊 查看该基金", use_container_width=True, type="primary"):
                     st.session_state.fund_code = selected_code
                     CacheManager.clear_cache()

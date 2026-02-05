@@ -34,7 +34,8 @@ class TushareClient:
 
             # Normalize fund code
             fund_code = fund_code.strip()
-            if not fund_code.upper().endswith('.OF'):
+            # Only add .OF suffix if the code has no suffix at all
+            if '.' not in fund_code:
                 fund_code = f"{fund_code}.OF"
 
             # Fetch fund basic info
@@ -136,7 +137,8 @@ class TushareClient:
 
             # Normalize fund code
             fund_code = fund_code.strip()
-            if not fund_code.upper().endswith('.OF'):
+            # Only add .OF suffix if the code has no suffix at all
+            if '.' not in fund_code:
                 fund_code = f"{fund_code}.OF"
 
             # Fetch portfolio (latest quarter)
