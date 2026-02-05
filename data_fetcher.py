@@ -227,13 +227,23 @@ class RealtimeQuoteClient:
             sina_codes = [f"sh{code}" if code.startswith('6') else f"sz{code}" for code in stock_codes]
             url = f"http://hq.sinajs.cn/list={','.join(sina_codes)}"
 
+            # Add headers to avoid 403 error
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Referer': 'http://finance.sina.com.cn',
+                'Accept': '*/*',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                'Accept-Encoding': 'gzip, deflate',
+                'Connection': 'keep-alive'
+            }
+
             # Try with longer timeout and retry once if it fails
             max_retries = 2
             timeout = 15  # Increased from 5 to 15 seconds
 
             for attempt in range(max_retries):
                 try:
-                    response = requests.get(url, timeout=timeout)
+                    response = requests.get(url, headers=headers, timeout=timeout)
                     response.encoding = 'gbk'
                     if response.status_code != 200:
                         if attempt < max_retries - 1:
