@@ -71,23 +71,27 @@ st.markdown("""
 
     /* Sidebar buttons */
     [data-testid="stSidebar"] .stButton>button {
-        background-color: rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.15) !important;
         color: white !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
+        font-weight: 500 !important;
     }
 
     [data-testid="stSidebar"] .stButton>button:hover {
-        background-color: rgba(255, 255, 255, 0.3) !important;
+        background-color: rgba(255, 255, 255, 0.25) !important;
     }
 
     [data-testid="stSidebar"] .stButton>button[kind="primary"] {
-        background-color: rgba(255, 255, 255, 0.9) !important;
+        background-color: white !important;
         color: #1e3a8a !important;
         border: none !important;
+        font-weight: 600 !important;
     }
 
     [data-testid="stSidebar"] .stButton>button[kind="primary"]:hover {
-        background-color: white !important;
+        background-color: #f0f9ff !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
     /* Metric card styling */
