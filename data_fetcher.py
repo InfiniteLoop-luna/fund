@@ -183,8 +183,51 @@ class RealtimeQuoteClient:
     def _fetch_from_tushare(self, stock_codes: List[str]) -> Tuple[dict, Optional[str]]:
         if not self.pro:
             return {}, "Tushare API not available"
+
         try:
             ts_codes = [f"{code}.SH" if code.startswith('6') else f"{code}.SZ" for code in stock_codes]
+
+            # Try real-time tick snapshot first (stk_tick)
+            try:
+                df = self.pro.stk_tick(ts_code=','.join(ts_codes))
+                if not df.empty and 'price' in df.columns and 'pct_change' in df.columns:
+                    quotes = {}
+                    for _, row in df.iterrows():
+                        # Validate and convert price
+                        price_value = row['price']
+                        if pd.isna(price_value):
+                            continue
+
+                        try:
+                            current_price = float(price_value)
+                        except (ValueError, TypeError):
+                            continue
+
+                        # Validate and convert pct_change
+                        pct_change_value = row['pct_change']
+                        if pd.isna(pct_change_value):
+                            continue
+
+                        try:
+                            change_pct = float(pct_change_value)
+                        except (ValueError, TypeError):
+                            continue
+
+                        stock_code = row['ts_code'].split('.')[0]
+                        quotes[stock_code] = Quote(
+                            stock_code=stock_code,
+                            current_price=current_price,
+                            change_pct=change_pct,
+                            timestamp=datetime.now()
+                        )
+
+                    if quotes:
+                        return quotes, None
+            except Exception:
+                # If stk_tick fails, fall through to daily API
+                pass
+
+            # Fallback to daily API
             df = self.pro.daily(ts_code=','.join(ts_codes), fields='ts_code,trade_date,close,pct_chg')
             if df.empty:
                 return {}, "No data from Tushare"
