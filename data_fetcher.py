@@ -49,23 +49,35 @@ class TushareClient:
             if missing_fields:
                 return None, f"Missing required fields in fund_basic response: {', '.join(missing_fields)}"
 
-            # Fetch latest net value
-            nav_df = self.pro.fund_nav(ts_code=fund_code, fields='end_date,unit_nav')
+            # Fetch latest net value (get all fields to be more flexible)
+            nav_df = self.pro.fund_nav(ts_code=fund_code)
 
             if nav_df.empty:
                 return None, f"No net value data found for {fund_code}"
 
-            # Validate required fields exist in nav_df
-            nav_required_fields = ['end_date', 'unit_nav']
-            nav_missing_fields = [field for field in nav_required_fields if field not in nav_df.columns]
-            if nav_missing_fields:
-                return None, f"Missing required fields in fund_nav response: {', '.join(nav_missing_fields)}"
+            # Check which date field is available (end_date or nav_date)
+            date_field = None
+            if 'end_date' in nav_df.columns:
+                date_field = 'end_date'
+            elif 'nav_date' in nav_df.columns:
+                date_field = 'nav_date'
+            else:
+                return None, f"No date field found in fund_nav response for {fund_code}"
+
+            # Check which nav field is available (unit_nav or nav)
+            nav_field = None
+            if 'unit_nav' in nav_df.columns:
+                nav_field = 'unit_nav'
+            elif 'nav' in nav_df.columns:
+                nav_field = 'nav'
+            else:
+                return None, f"No net value field found in fund_nav response for {fund_code}"
 
             # Get latest record
-            nav_df = nav_df.sort_values('end_date', ascending=False).iloc[0]
+            nav_df = nav_df.sort_values(date_field, ascending=False).iloc[0]
 
             # Validate and convert net value
-            unit_nav = nav_df['unit_nav']
+            unit_nav = nav_df[nav_field]
             if pd.isna(unit_nav):
                 return None, f"Net value is null for {fund_code}"
 
@@ -81,7 +93,7 @@ class TushareClient:
                 manager=df.iloc[0]['manager'] if 'manager' in df.columns and pd.notna(df.iloc[0]['manager']) else 'N/A',
                 found_date=df.iloc[0]['found_date'],
                 net_value=net_value,
-                net_value_date=nav_df['end_date']
+                net_value_date=nav_df[date_field]
             )
 
             return fund_info, None
