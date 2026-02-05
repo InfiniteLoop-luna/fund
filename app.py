@@ -53,15 +53,12 @@ with st.sidebar:
             filtered_df = fund_list_df[
                 fund_list_df['ts_code'].str.contains(search_term, case=False, na=False) |
                 fund_list_df['name'].str.contains(search_term, case=False, na=False)
-            ].head(50)  # Limit to 50 results for performance
+            ]
         else:
-            filtered_df = fund_list_df.head(50)  # Show first 50 by default
+            filtered_df = fund_list_df
 
         # Display fund count
-        if search_term:
-            st.caption(f"找到 {len(fund_list_df[fund_list_df['ts_code'].str.contains(search_term, case=False, na=False) | fund_list_df['name'].str.contains(search_term, case=False, na=False)])} 个基金，显示前 {len(filtered_df)} 个")
-        else:
-            st.caption(f"共 {len(fund_list_df)} 个基金，显示前 {len(filtered_df)} 个")
+        st.caption(f"共 {len(filtered_df)} 个基金")
 
         # Fund selection
         if not filtered_df.empty:
