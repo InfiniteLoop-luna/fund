@@ -95,6 +95,10 @@ st.markdown("""
         font-weight: 600 !important;
     }
 
+    [data-testid="stSidebar"] .stButton>button[kind="primary"] * {
+        color: #1e3a8a !important;
+    }
+
     [data-testid="stSidebar"] .stButton>button[kind="primary"]:hover {
         background-color: #f0f9ff !important;
         transform: translateY(-1px);
