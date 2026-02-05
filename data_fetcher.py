@@ -271,9 +271,15 @@ class CacheManager:
         if key not in st.session_state:
             return None
         cached = st.session_state[key]
+        if not isinstance(cached, CachedData):
+            return None
         age = (datetime.now() - cached.timestamp).total_seconds()
         if age > ttl:
-            cached.is_stale = True
+            return CachedData(
+                data=cached.data,
+                timestamp=cached.timestamp,
+                is_stale=True
+            )
         return cached
 
     @staticmethod
@@ -286,6 +292,9 @@ class CacheManager:
 
     @staticmethod
     def clear_cache():
-        keys_to_remove = [k for k in st.session_state.keys() if k.startswith('cache_')]
+        keys_to_remove = []
+        for key in st.session_state.keys():
+            if isinstance(st.session_state.get(key), CachedData):
+                keys_to_remove.append(key)
         for key in keys_to_remove:
             del st.session_state[key]
