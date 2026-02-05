@@ -15,12 +15,45 @@ st.set_page_config(
 # Custom CSS for professional look
 st.markdown("""
 <style>
-    /* Card container styling */
+    /* Main app background with subtle gradient */
+    .stApp {
+        background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+    }
+
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1e3a8a 0%, #2563eb 100%);
+    }
+
+    [data-testid="stSidebar"] * {
+        color: white !important;
+    }
+
+    [data-testid="stSidebar"] .stTextInput input {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        color: white !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    }
+
+    [data-testid="stSidebar"] .stTextInput input::placeholder {
+        color: rgba(255, 255, 255, 0.6) !important;
+    }
+
+    [data-testid="stSidebar"] .stSelectbox > div > div {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        color: white !important;
+    }
+
+    [data-testid="stSidebar"] .stRadio > label {
+        color: white !important;
+    }
+
+    /* Card container styling with enhanced shadow */
     .card {
         background-color: #ffffff;
         border-radius: 12px;
         border: 1px solid #e0e0e0;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
         padding: 20px;
         margin-bottom: 20px;
     }
@@ -36,6 +69,27 @@ st.markdown("""
         border-color: #1e40af !important;
     }
 
+    /* Sidebar buttons */
+    [data-testid="stSidebar"] .stButton>button {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    }
+
+    [data-testid="stSidebar"] .stButton>button:hover {
+        background-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    [data-testid="stSidebar"] .stButton>button[kind="primary"] {
+        background-color: rgba(255, 255, 255, 0.9) !important;
+        color: #1e3a8a !important;
+        border: none !important;
+    }
+
+    [data-testid="stSidebar"] .stButton>button[kind="primary"]:hover {
+        background-color: white !important;
+    }
+
     /* Metric card styling */
     .metric-card {
         background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
@@ -43,7 +97,7 @@ st.markdown("""
         padding: 20px;
         color: white;
         text-align: center;
-        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
+        box-shadow: 0 6px 20px rgba(30, 58, 138, 0.25);
     }
 
     .metric-value {
@@ -81,6 +135,18 @@ st.markdown("""
     /* Streamlit metric override for Chinese colors */
     [data-testid="stMetricValue"] {
         font-size: 1.8rem;
+    }
+
+    /* Title styling */
+    h1 {
+        color: #1e3a8a !important;
+        font-weight: 700 !important;
+    }
+
+    /* Dataframe styling */
+    [data-testid="stDataFrame"] {
+        background-color: white;
+        border-radius: 8px;
     }
 </style>
 """, unsafe_allow_html=True)
