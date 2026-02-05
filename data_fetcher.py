@@ -234,6 +234,57 @@ class TushareClient:
         except Exception as e:
             return None, f"Error fetching fund portfolio: {str(e)}"
 
+    def get_fund_nav_history(self, fund_code: str, days: int = 30) -> Tuple[Optional[pd.DataFrame], Optional[str]]:
+        """
+        Fetch fund net value history for the last N days
+
+        Returns:
+            (DataFrame with columns: nav_date, unit_nav, None) on success
+            (None, error_message) on failure
+        """
+        try:
+            # Validate input
+            if not fund_code or not fund_code.strip():
+                return None, "Fund code cannot be empty"
+
+            # Normalize fund code
+            fund_code = fund_code.strip()
+            if '.' not in fund_code:
+                fund_code = f"{fund_code}.OF"
+
+            # Fetch historical net values
+            df = self.pro.fund_nav(ts_code=fund_code)
+
+            if df.empty:
+                return None, f"No historical data found for {fund_code}"
+
+            # Determine date and nav fields
+            date_field = 'end_date' if 'end_date' in df.columns else 'nav_date' if 'nav_date' in df.columns else None
+            nav_field = 'unit_nav' if 'unit_nav' in df.columns else 'nav' if 'nav' in df.columns else None
+
+            if not date_field or not nav_field:
+                return None, "Required fields not found in historical data"
+
+            # Sort by date and take last N days
+            df = df.sort_values(date_field, ascending=False).head(days)
+            df = df.sort_values(date_field, ascending=True)  # Sort ascending for chart
+
+            # Select only needed columns and rename
+            result_df = df[[date_field, nav_field]].copy()
+            result_df.columns = ['date', 'nav']
+
+            # Convert nav to float
+            result_df['nav'] = pd.to_numeric(result_df['nav'], errors='coerce')
+            result_df = result_df.dropna()
+
+            if result_df.empty:
+                return None, "No valid historical data available"
+
+            return result_df, None
+
+        except Exception as e:
+            return None, f"Error fetching historical data: {str(e)}"
+
 
 class RealtimeQuoteClient:
     """Client for fetching real-time stock quotes with fallback"""

@@ -1,6 +1,7 @@
 import streamlit as st
 import time
 from datetime import datetime
+import plotly.graph_objects as go
 from data_fetcher import TushareClient, RealtimeQuoteClient, CacheManager
 from calculator import NetValueEstimator
 
@@ -10,6 +11,79 @@ st.set_page_config(
     page_icon="📈",
     layout="wide"
 )
+
+# Custom CSS for professional look
+st.markdown("""
+<style>
+    /* Card container styling */
+    .card {
+        background-color: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    /* Deep blue accent color */
+    .stButton>button[kind="primary"] {
+        background-color: #1e3a8a !important;
+        border-color: #1e3a8a !important;
+    }
+
+    .stButton>button[kind="primary"]:hover {
+        background-color: #1e40af !important;
+        border-color: #1e40af !important;
+    }
+
+    /* Metric card styling */
+    .metric-card {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        border-radius: 12px;
+        padding: 20px;
+        color: white;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
+    }
+
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+
+    .metric-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* Chinese stock market colors: red for gains, green for losses */
+    .gain {
+        color: #ef4444 !important;
+    }
+
+    .loss {
+        color: #22c55e !important;
+    }
+
+    /* Section headers */
+    .section-header {
+        color: #1e3a8a;
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e0e0e0;
+    }
+
+    /* Streamlit metric override for Chinese colors */
+    [data-testid="stMetricValue"] {
+        font-size: 1.8rem;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Initialize session state
 if 'last_update' not in st.session_state:
@@ -94,6 +168,24 @@ with st.sidebar:
                     st.rerun()
 
     st.markdown("---")
+    st.subheader("🔍 基金查询")
+
+    # Fund code input in sidebar
+    fund_code_input = st.text_input(
+        "基金代码",
+        value=st.session_state.fund_code,
+        placeholder="请输入6位基金代码，如: 000001",
+        help="输入基金代码，支持格式: 000001 或 000001.OF",
+        key="fund_code_input_sidebar"
+    )
+
+    if st.button("🔍 查询", use_container_width=True, type="primary", key="query_button_sidebar"):
+        if fund_code_input:
+            st.session_state.fund_code = fund_code_input.strip()
+            CacheManager.clear_cache()
+            st.rerun()
+
+    st.markdown("---")
     st.subheader("刷新设置")
 
     refresh_options = {
@@ -123,25 +215,8 @@ with st.sidebar:
             st.rerun()
 
 # Main content
-st.title("📈 基金实时估值分析工具")
+st.title("📈 Spark Fund - 基金实时估值分析")
 st.markdown("---")
-
-# Input section
-col1, col2 = st.columns([3, 1])
-with col1:
-    fund_code_input = st.text_input(
-        "基金代码",
-        value=st.session_state.fund_code,
-        placeholder="请输入6位基金代码，如: 000001",
-        help="输入基金代码，支持格式: 000001 或 000001.OF"
-    )
-with col2:
-    st.markdown("<br>", unsafe_allow_html=True)
-    query_button = st.button("🔍 查询", use_container_width=True, type="primary")
-
-if query_button and fund_code_input:
-    st.session_state.fund_code = fund_code_input.strip()
-    CacheManager.clear_cache()
 
 # Fetch and display data
 if st.session_state.fund_code:
@@ -206,13 +281,145 @@ if st.session_state.fund_code:
         st.error(f"❌ 系统错误: {str(e)}")
         st.stop()
 
+    # Top metrics section with Chinese stock market colors (red for gains, green for losses)
+    if estimation:
+        metric_col1, metric_col2, metric_col3 = st.columns(3)
+
+        # Calculate values
+        current_value = estimation.estimated_value
+        change_amount = estimation.estimated_value - fund_info.net_value
+        change_pct = estimation.estimated_change_pct
+
+        # Determine color class based on Chinese convention
+        color_class = "gain" if change_pct > 0 else "loss" if change_pct < 0 else ""
+        color_hex = "#ef4444" if change_pct > 0 else "#22c55e" if change_pct < 0 else "#6b7280"
+
+        with metric_col1:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">当前估值</div>
+                <div class="metric-value">{current_value:.4f}</div>
+                <div style="font-size: 0.85rem; opacity: 0.8;">基准净值: {fund_info.net_value:.4f}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with metric_col2:
+            change_sign = "+" if change_amount > 0 else ""
+            st.markdown(f"""
+            <div class="metric-card" style="background: linear-gradient(135deg, {color_hex} 0%, {color_hex}dd 100%);">
+                <div class="metric-label">盈亏金额</div>
+                <div class="metric-value">{change_sign}{change_amount:.4f}</div>
+                <div style="font-size: 0.85rem; opacity: 0.8;">单位净值变化</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with metric_col3:
+            change_sign = "+" if change_pct > 0 else ""
+            st.markdown(f"""
+            <div class="metric-card" style="background: linear-gradient(135deg, {color_hex} 0%, {color_hex}dd 100%);">
+                <div class="metric-label">盈亏比例</div>
+                <div class="metric-value">{change_sign}{change_pct:.2f}%</div>
+                <div style="font-size: 0.85rem; opacity: 0.8;">相对净值日涨跌</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+    # Historical trend chart with Plotly
+    st.markdown('<div class="section-header">📊 净值走势图</div>', unsafe_allow_html=True)
+
+    # Fetch historical data (with cache)
+    cache_key_history = f"cache_history_{st.session_state.fund_code}"
+    cached_history = CacheManager.get_cached(cache_key_history, CacheManager.FUND_INFO_TTL)
+
+    if cached_history and not cached_history.is_stale:
+        history_df = cached_history.data
+        history_error = None
+    else:
+        history_df, history_error = tushare_client.get_fund_nav_history(st.session_state.fund_code, days=30)
+        if history_df is not None:
+            CacheManager.set_cached(cache_key_history, history_df)
+
+    if history_error:
+        st.warning(f"⚠️ {history_error}")
+    elif history_df is not None and not history_df.empty:
+        # Create Plotly chart with smooth curves and transparent background
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(
+            x=history_df['date'],
+            y=history_df['nav'],
+            mode='lines',
+            name='单位净值',
+            line=dict(
+                color='#1e3a8a',
+                width=3,
+                shape='spline'  # Smooth curve
+            ),
+            fill='tozeroy',
+            fillcolor='rgba(30, 58, 138, 0.1)',
+            hovertemplate='<b>日期</b>: %{x}<br><b>净值</b>: %{y:.4f}<extra></extra>'
+        ))
+
+        # Add current estimation point if available
+        if estimation:
+            fig.add_trace(go.Scatter(
+                x=[datetime.now().strftime('%Y%m%d')],
+                y=[estimation.estimated_value],
+                mode='markers',
+                name='实时估值',
+                marker=dict(
+                    color='#ef4444' if estimation.estimated_change_pct > 0 else '#22c55e',
+                    size=12,
+                    symbol='diamond'
+                ),
+                hovertemplate='<b>实时估值</b>: %{y:.4f}<extra></extra>'
+            ))
+
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            xaxis=dict(
+                title='日期',
+                showgrid=True,
+                gridcolor='rgba(0,0,0,0.05)',
+                showline=True,
+                linecolor='rgba(0,0,0,0.1)'
+            ),
+            yaxis=dict(
+                title='单位净值',
+                showgrid=True,
+                gridcolor='rgba(0,0,0,0.05)',
+                showline=True,
+                linecolor='rgba(0,0,0,0.1)'
+            ),
+            hovermode='x unified',
+            margin=dict(l=50, r=50, t=30, b=50),
+            height=400,
+            font=dict(family='Arial, sans-serif', size=12),
+            legend=dict(
+                orientation='h',
+                yanchor='bottom',
+                y=1.02,
+                xanchor='right',
+                x=1
+            )
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("暂无历史数据")
+
+    st.markdown("---")
+
     # Display results in three columns
     st.markdown("---")
     col_left, col_center, col_right = st.columns([1, 1, 1])
 
     # Left column - Fund basic info
     with col_left:
-        st.subheader("📋 基金信息")
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">📋 基金信息</div>', unsafe_allow_html=True)
         st.markdown(f"**{fund_info.fund_name}**")
         st.caption(f"代码: {fund_info.fund_code}")
         st.text(f"管理公司: {fund_info.management}")
@@ -228,10 +435,12 @@ if st.session_state.fund_code:
 
         if cached_info and cached_info.is_stale:
             st.warning("⚠️ 显示缓存数据")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # Center column - Real-time estimation
     with col_center:
-        st.subheader("💹 实时估值")
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">💹 实时估值</div>', unsafe_allow_html=True)
 
         if estimation:
             # Market status
@@ -240,8 +449,8 @@ if st.session_state.fund_code:
             else:
                 st.info("🔒 休市")
 
-            # Estimated value
-            change_color = "#FF4B4B" if estimation.estimated_change_pct > 0 else "#00C853" if estimation.estimated_change_pct < 0 else "#666666"
+            # Estimated value with Chinese colors
+            change_color = "#ef4444" if estimation.estimated_change_pct > 0 else "#22c55e" if estimation.estimated_change_pct < 0 else "#6b7280"
 
             st.markdown(
                 f"<h1 style='text-align: center; color: {change_color};'>{estimation.estimated_value:.4f}</h1>",
@@ -274,10 +483,12 @@ if st.session_state.fund_code:
             st.caption(f"估算时间: {estimation.timestamp.strftime('%H:%M:%S')}")
         else:
             st.info("暂无持仓数据，无法估算")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # Right column - Holdings table
     with col_right:
-        st.subheader("📊 前十大重仓股")
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">📊 前十大重仓股</div>', unsafe_allow_html=True)
 
         if holdings:
             table_data = []
@@ -286,6 +497,7 @@ if st.session_state.fund_code:
                 change_pct = quotes_dict[stock_code].change_pct if stock_code in quotes_dict else None
 
                 if change_pct is not None:
+                    # Chinese colors: red for gains, green for losses
                     change_color = "🔴" if change_pct > 0 else "🟢" if change_pct < 0 else "⚪"
                     change_str = f"{change_color} {change_pct:+.2f}%"
                 else:
@@ -305,3 +517,4 @@ if st.session_state.fund_code:
             st.caption(f"合计占比: {total_weight:.2f}%")
         else:
             st.info("暂无持仓数据")
+        st.markdown('</div>', unsafe_allow_html=True)
