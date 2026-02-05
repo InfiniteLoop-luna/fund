@@ -139,6 +139,8 @@ class TushareClient:
             df = df.sort_values('mkv', ascending=False).head(10)
 
             holdings = []
+            codes_needing_names = []  # Track codes that need name lookup
+
             for idx, row in df.iterrows():
                 # Validate and convert weight
                 weight_value = row['stk_mkv_ratio']
@@ -150,16 +152,60 @@ class TushareClient:
                 except (ValueError, TypeError):
                     continue  # Skip holdings with invalid weight format
 
+                # Check if we have stock name
+                has_name = 'stk_name' in df.columns and pd.notna(row['stk_name'])
+                stock_code = row['symbol']
+
                 holding = Holding(
                     rank=len(holdings) + 1,
-                    stock_code=row['symbol'],
-                    stock_name=row['stk_name'] if 'stk_name' in df.columns and pd.notna(row['stk_name']) else row['symbol'],
+                    stock_code=stock_code,
+                    stock_name=row['stk_name'] if has_name else stock_code,
                     weight=weight
                 )
                 holdings.append(holding)
 
+                # Track codes that need name lookup
+                if not has_name:
+                    codes_needing_names.append(stock_code)
+
             if not holdings:
                 return None, f"No valid holdings data found for {fund_code}"
+
+            # Fetch missing stock names from stock_basic API
+            if codes_needing_names:
+                try:
+                    # Convert codes to Tushare format (add .SH or .SZ suffix if needed)
+                    ts_codes = []
+                    for code in codes_needing_names:
+                        if '.' not in code:
+                            # Determine exchange based on code prefix
+                            if code.startswith('6'):
+                                ts_codes.append(f"{code}.SH")
+                            else:
+                                ts_codes.append(f"{code}.SZ")
+                        else:
+                            ts_codes.append(code)
+
+                    # Fetch stock names
+                    stock_df = self.pro.stock_basic(ts_code=','.join(ts_codes), fields='ts_code,name')
+
+                    if not stock_df.empty:
+                        # Create mapping of code to name
+                        name_map = {}
+                        for _, stock_row in stock_df.iterrows():
+                            # Extract base code (remove .SH/.SZ suffix)
+                            ts_code = stock_row['ts_code']
+                            base_code = ts_code.split('.')[0]
+                            name_map[base_code] = stock_row['name']
+
+                        # Update holdings with fetched names
+                        for holding in holdings:
+                            base_code = holding.stock_code.split('.')[0]
+                            if base_code in name_map:
+                                holding.stock_name = name_map[base_code]
+                except Exception as e:
+                    # If name lookup fails, just use codes (already set as fallback)
+                    pass
 
             return holdings, None
 
