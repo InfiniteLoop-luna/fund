@@ -1,8 +1,9 @@
 import tushare as ts
 import streamlit as st
 import pandas as pd
+import requests
 from typing import Optional, Tuple, List
-from models import FundBasicInfo, Holding
+from models import FundBasicInfo, Holding, Quote
 from datetime import datetime
 
 
@@ -152,3 +153,72 @@ class TushareClient:
 
         except Exception as e:
             return None, f"Error fetching fund portfolio: {str(e)}"
+
+
+class RealtimeQuoteClient:
+    """Client for fetching real-time stock quotes with fallback"""
+
+    def __init__(self, tushare_pro=None):
+        self.pro = tushare_pro
+
+    def get_realtime_quotes(self, stock_codes: List[str]) -> Tuple[dict, Optional[str]]:
+        quotes, error = self._fetch_from_tushare(stock_codes)
+        if quotes:
+            return quotes, error
+        quotes, error = self._fetch_from_sina(stock_codes)
+        return quotes, error
+
+    def _fetch_from_tushare(self, stock_codes: List[str]) -> Tuple[dict, Optional[str]]:
+        if not self.pro:
+            return {}, "Tushare API not available"
+        try:
+            ts_codes = [f"{code}.SH" if code.startswith('6') else f"{code}.SZ" for code in stock_codes]
+            df = self.pro.daily(ts_code=','.join(ts_codes), fields='ts_code,trade_date,close,pct_chg')
+            if df.empty:
+                return {}, "No data from Tushare"
+            df = df.sort_values('trade_date', ascending=False).drop_duplicates(subset=['ts_code'], keep='first')
+            quotes = {}
+            for _, row in df.iterrows():
+                stock_code = row['ts_code'].split('.')[0]
+                quotes[stock_code] = Quote(
+                    stock_code=stock_code,
+                    current_price=float(row['close']),
+                    change_pct=float(row['pct_chg']),
+                    timestamp=datetime.now()
+                )
+            return quotes, None
+        except Exception as e:
+            return {}, f"Tushare error: {str(e)}"
+
+    def _fetch_from_sina(self, stock_codes: List[str]) -> Tuple[dict, Optional[str]]:
+        try:
+            sina_codes = [f"sh{code}" if code.startswith('6') else f"sz{code}" for code in stock_codes]
+            url = f"http://hq.sinajs.cn/list={','.join(sina_codes)}"
+            response = requests.get(url, timeout=5)
+            response.encoding = 'gbk'
+            if response.status_code != 200:
+                return {}, f"Sina API error: HTTP {response.status_code}"
+            quotes = {}
+            for line in response.text.strip().split('\n'):
+                if '=' not in line:
+                    continue
+                code_part = line.split('=')[0].split('_')[-1]
+                data_part = line.split('"')[1]
+                if not data_part:
+                    continue
+                fields = data_part.split(',')
+                if len(fields) < 4:
+                    continue
+                stock_code = code_part[2:]
+                current_price = float(fields[3])
+                prev_close = float(fields[2])
+                change_pct = ((current_price - prev_close) / prev_close) * 100 if prev_close > 0 else 0.0
+                quotes[stock_code] = Quote(
+                    stock_code=stock_code,
+                    current_price=current_price,
+                    change_pct=change_pct,
+                    timestamp=datetime.now()
+                )
+            return quotes, None if quotes else "No data from Sina"
+        except Exception as e:
+            return {}, f"Sina API error: {str(e)}"
