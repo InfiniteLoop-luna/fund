@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 
 @dataclass
@@ -49,6 +49,6 @@ class EstimationResult:
 @dataclass
 class CachedData:
     """Cached data with timestamp"""
-    data: any
+    data: Any
     timestamp: datetime
     is_stale: bool = False
