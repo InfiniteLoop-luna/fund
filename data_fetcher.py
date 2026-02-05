@@ -125,8 +125,8 @@ class TushareClient:
             if df.empty:
                 return None, f"No holdings data found for {fund_code}"
 
-            # Validate required fields exist
-            required_fields = ['end_date', 'symbol', 'stk_name', 'mkv', 'stk_mkv_ratio']
+            # Validate required fields exist (stk_name is optional)
+            required_fields = ['end_date', 'symbol', 'mkv', 'stk_mkv_ratio']
             missing_fields = [field for field in required_fields if field not in df.columns]
             if missing_fields:
                 return None, f"Missing required fields in fund_portfolio response: {', '.join(missing_fields)}"
@@ -153,7 +153,7 @@ class TushareClient:
                 holding = Holding(
                     rank=len(holdings) + 1,
                     stock_code=row['symbol'],
-                    stock_name=row['stk_name'],
+                    stock_name=row['stk_name'] if 'stk_name' in df.columns and pd.notna(row['stk_name']) else row['symbol'],
                     weight=weight
                 )
                 holdings.append(holding)
